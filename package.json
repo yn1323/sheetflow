@@ -1,6 +1,6 @@
 {
-  "name": "@yn1323/sheetflow",
-  "version": "1.0.0",
+  "name": "xlkit",
+  "version": "1.0.3",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -21,15 +21,15 @@
   ],
   "author": "",
   "license": "MIT",
-  "description": "Declarative schema-based wrapper for ExcelJS with type safety and intuitive styling",
+  "description": "xlkit - Declarative schema-based wrapper for ExcelJS with type safety and intuitive styling",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yn1323/sheetflow.git"
+    "url": "git+https://github.com/yn1323/xlkit.git"
   },
   "bugs": {
-    "url": "https://github.com/yn1323/sheetflow/issues"
+    "url": "https://github.com/yn1323/xlkit/issues"
   },
-  "homepage": "https://github.com/yn1323/sheetflow#readme",
+  "homepage": "https://github.com/yn1323/xlkit#readme",
   "dependencies": {
     "exceljs": "^4.4.0"
   },

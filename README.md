@@ -1,11 +1,11 @@
-# Sheetflow
+# xlkit
 
 <p align="center">
-  <img src="./logo.png" alt="Sheetflow Logo" width="200" />
+  <img src="./logo.png" alt="xlkit Logo" width="200" />
 </p>
 
 [ExcelJS](https://github.com/exceljs/exceljs) のための宣言的スキーマベースラッパーです。
-シンプルなスキーマでExcelの構造を定義するだけで、スタイル、フォーマット、レイアウトをSheetflowが自動で処理します。
+シンプルなスキーマでExcelの構造を定義するだけで、スタイル、フォーマット、レイアウトをxlkitが自動で処理します。
 
 [English README](./README_en.md)
 
@@ -21,13 +21,13 @@
 ## インストール
 
 ```bash
-npm install sheetflow
+npm install xlkit
 ```
 
 ## クイックスタート
 
 ```typescript
-import { createWorkbook, defineSheet } from 'sheetflow';
+import { createWorkbook, defineSheet } from 'xlkit';
 
 // 1. データ型を定義
 interface User {
@@ -104,9 +104,7 @@ style: {
     color: '#FF0000' // 赤色
   },
   fill: {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FFEEEEEE' } // または HexColor '#EEEEEE'
+    color: '#EEEEEE' // Hexカラーで簡単に指定
   },
   alignment: {
     vertical: 'middle',
@@ -148,9 +146,23 @@ rows: {
 }
 ```
 
-### 6. タイムアウト設定
+### 6. ブラウザ環境でのダウンロード
 
-大量データ処理時のフリーズを防ぐため、`save()` および `saveToBuffer()` にはデフォルトで10秒のタイムアウトが設定されています。
+ブラウザ環境では、`download()` メソッドを使って簡単にExcelファイルをダウンロードできます。
+
+```typescript
+// Node.js環境
+await createWorkbook().addSheet(sheet, data).save('output.xlsx');
+
+// ブラウザ環境
+await createWorkbook().addSheet(sheet, data).download('output.xlsx');
+```
+
+内部的には`saveToBuffer()`を呼び出してBlobを作成し、自動的にダウンロードを開始します。
+
+### 7. タイムアウト設定
+
+大量データ処理時のフリーズを防ぐため、`save()`、`saveToBuffer()`、`download()` にはデフォルトで10秒のタイムアウトが設定されています。
 
 ```typescript
 // デフォルト（10秒）
@@ -160,7 +172,7 @@ await createWorkbook().addSheet(sheet, data).save('output.xlsx');
 await createWorkbook().addSheet(sheet, data).save('output.xlsx', { timeout: 30000 });
 
 // ブラウザ環境でも同様
-const buffer = await createWorkbook().addSheet(sheet, data).saveToBuffer({ timeout: 15000 });
+await createWorkbook().addSheet(sheet, data).download('output.xlsx', { timeout: 15000 });
 ```
 
 > **推奨**: 10万行以下のデータであればデフォルト設定で問題ありません。それ以上の大量データを扱う場合は、ファイル分割やストリーミング処理を検討してください。

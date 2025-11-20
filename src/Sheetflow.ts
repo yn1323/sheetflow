@@ -1,15 +1,15 @@
 import ExcelJS from 'exceljs';
-import { SheetDef, ColumnDef, SheetflowStyle } from './types';
+import { SheetDef, ColumnDef, XLStyle } from './types';
 import { mapStyle } from './utils/style';
 
-export class Sheetflow {
+export class XLKit {
   private workbook: ExcelJS.Workbook;
 
   constructor() {
     this.workbook = new ExcelJS.Workbook();
   }
 
-  addSheet<T>(def: SheetDef<T>, data: T[]): Sheetflow {
+  addSheet<T>(def: SheetDef<T>, data: T[]): XLKit {
     // Validate Sheet Name
     if (!def.name) {
         throw new Error('Sheet name is required.');
@@ -206,10 +206,28 @@ export class Sheetflow {
       const buffer = await Promise.race([writePromise, timeoutPromise]);
       return new Uint8Array(buffer as ArrayBuffer);
   }
+
+  async download(filename: string, options?: { timeout?: number }): Promise<void> {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      throw new Error('download() is only available in browser environment. Use save() for Node.js or saveToBuffer() for custom handling.');
+    }
+
+    const buffer = await this.saveToBuffer(options);
+    const blob = new Blob([buffer.buffer as ArrayBuffer], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
 }
 
-export function createWorkbook(): Sheetflow {
-  return new Sheetflow();
+export function createWorkbook(): XLKit {
+  return new XLKit();
 }
 
 export function defineSheet<T>(def: SheetDef<T>): SheetDef<T> {

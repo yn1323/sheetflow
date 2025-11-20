@@ -1,8 +1,8 @@
 import { Style, Borders } from 'exceljs';
-import { SheetflowStyle } from '../types';
+import { XLStyle } from '../types';
 import { toArgb } from './color';
 
-export function mapStyle(style: SheetflowStyle): Partial<Style> {
+export function mapStyle(style: XLStyle): Partial<Style> {
   const excelStyle: Partial<Style> = {};
 
   if (style.font) {

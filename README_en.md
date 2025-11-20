@@ -1,11 +1,11 @@
-# Sheetflow
+# xlkit
 
 <p align="center">
-  <img src="./logo.png" alt="Sheetflow Logo" width="200" />
+  <img src="./logo.png" alt="xlkit Logo" width="200" />
 </p>
 
 A declarative, schema-based wrapper for [ExcelJS](https://github.com/exceljs/exceljs).  
-Define your Excel structure with a simple schema and let Sheetflow handle the styling, formatting, and layout.
+Define your Excel structure with a simple schema and let xlkit handle the styling, formatting, and layout.
 
 ## Features
 
@@ -19,13 +19,13 @@ Define your Excel structure with a simple schema and let Sheetflow handle the st
 ## Installation
 
 ```bash
-npm install sheetflow
+npm install xlkit
 ```
 
 ## Usage
 
 ```typescript
-import { createWorkbook, defineSheet } from 'sheetflow';
+import { createWorkbook, defineSheet } from 'xlkit';
 
 // 1. Define your data type
 interface User {
@@ -93,9 +93,23 @@ const buffer = await createWorkbook()
 // -> Returns Uint8Array
 ```
 
+### Browser Download
+
+In browser environments, you can easily download Excel files using the `download()` method.
+
+```typescript
+// Node.js
+await createWorkbook().addSheet(sheet, data).save('output.xlsx');
+
+// Browser
+await createWorkbook().addSheet(sheet, data).download('output.xlsx');
+```
+
+Internally, it calls `saveToBuffer()`, creates a Blob, and automatically triggers the download.
+
 ### Timeout Configuration
 
-To prevent freezing with large datasets, both `save()` and `saveToBuffer()` have a default 10-second timeout.
+To prevent freezing with large datasets, `save()`, `saveToBuffer()`, and `download()` have a default 10-second timeout.
 
 ```typescript
 // Default (10 seconds)
@@ -104,8 +118,8 @@ await createWorkbook().addSheet(sheet, data).save('output.xlsx');
 // Custom timeout (30 seconds)
 await createWorkbook().addSheet(sheet, data).save('output.xlsx', { timeout: 30000 });
 
-// Same for browser environments
-const buffer = await createWorkbook().addSheet(sheet, data).saveToBuffer({ timeout: 15000 });
+// Browser environment
+await createWorkbook().addSheet(sheet, data).download('output.xlsx', { timeout: 15000 });
 ```
 
 > **Recommendation**: The default setting works well for datasets under 100,000 rows. For larger datasets, consider splitting files or using streaming approaches.

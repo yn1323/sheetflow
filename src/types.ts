@@ -2,7 +2,7 @@ import { Style, Alignment, Border, Fill, Font } from 'exceljs';
 
 export type HexColor = string; // #RRGGBB
 
-export interface SheetflowStyle {
+export interface XLStyle {
   font?: Partial<Font> & { color?: HexColor | { argb: string } };
   fill?: Partial<Fill> & { color?: HexColor };
   alignment?: Partial<Alignment>;
@@ -14,13 +14,13 @@ export interface ColumnDef<T> {
   header: string;
   width?: number | 'auto';
   merge?: 'vertical';
-  style?: SheetflowStyle | ((val: any, row: T, index: number) => SheetflowStyle);
+  style?: XLStyle | ((val: any, row: T, index: number) => XLStyle);
   format?: string | ((val: any) => string);
 }
 
 export interface HeaderConfig {
   rows: string[];
-  style?: SheetflowStyle;
+  style?: XLStyle;
   borders?: 'header-body' | 'all' | 'none';
 }
 
@@ -29,9 +29,9 @@ export interface SheetDef<T> {
   columns: ColumnDef<T>[];
   header?: HeaderConfig;
   rows?: {
-    style?: (data: T, index: number) => SheetflowStyle;
+    style?: (data: T, index: number) => XLStyle;
   };
-  defaultStyle?: SheetflowStyle;
+  defaultStyle?: XLStyle;
   borders?: 'all' | 'outer' | 'header-body' | 'none';
   autoWidth?: {
     padding?: number;
