@@ -71,14 +71,17 @@ const userSheet = defineSheet<User>({
     },
     borders: 'header-body'
   },
-  borders: 'outer'
+  borders: 'outer',
+  rows: {
+    style: (data, index) => index % 2 === 0 ? { fill: { color: '#F0F0F0' } } : {}
+  }
 });
 
 // 3. Generate Excel
 const users = [
   { id: 1, name: 'Alice', role: 'Admin', isActive: true },
   { id: 2, name: 'Bob', role: 'User', isActive: true },
-  { id: 3, name: 'Charlie', role: 'User', isActive: false },
+  { id: 3, name: 'Charlie', role: 'User', isActive: false, style: { fill: { color: '#FFCCCC' } } }, // Row style
 ];
 
 // Node.js

@@ -13,13 +13,20 @@ export interface ColumnDef<T> {
   key: keyof T;
   header: string;
   width?: number | 'auto';
-  merge?: 'vertical';
+  merge?: 'vertical' | 'horizontal';
   style?: XLStyle | ((val: any, row: T, index: number) => XLStyle);
   format?: string | ((val: any) => string);
 }
 
+export interface HeaderCell {
+  value: string;
+  colSpan?: number;
+  rowSpan?: number;
+  style?: XLStyle;
+}
+
 export interface HeaderConfig {
-  rows: string[];
+  rows?: (string | HeaderCell)[][];
   style?: XLStyle;
   borders?: 'header-body' | 'all' | 'none';
 }

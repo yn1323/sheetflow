@@ -27,7 +27,6 @@ describe('Fill Styling', () => {
       name: 'FillTest',
       columns: [{ key: 'id', header: 'ID' }],
       header: {
-          rows: ['ID List'],
           style: { fill: { color: '#CCCCCC' } }
       },
       rows: {

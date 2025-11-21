@@ -190,7 +190,6 @@ describe('Visual Verification Gallery', () => {
             { key: 'code', header: 'Code', width: 10, style: { alignment: { horizontal: 'center' } } }
         ],
         header: {
-            rows: ['Sales Report - January 2025'],
             style: { 
                 fill: { color: '#4472C4' }, 
                 font: { color: '#FFFFFF', bold: true, size: 14 },

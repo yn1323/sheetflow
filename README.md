@@ -73,7 +73,22 @@ await createWorkbook().addSheet(userSheet, users).save('users.xlsx');
 | `format` | `string` \| `Function` | 数値/日付のフォーマット文字列（例: `'$#,##0'`, `'yyyy-mm-dd'`）または変換関数。 |
 | `style` | `Style` \| `Function` | 列全体のスタイル、または値に応じた条件付きスタイル関数。 |
 
-### 2. 罫線 (`borders`)
+### 2. 自動列幅調整 (`autoWidth`)
+
+列幅の自動計算ロジックを微調整できます。
+
+```typescript
+const sheet = defineSheet<User>({
+  // ...
+  autoWidth: {
+    padding: 4,            // デフォルト: 2
+    headerIncluded: true,  // ヘッダーの長さも考慮するか
+    charWidthConstant: 1.5 // 文字幅の係数（デフォルト: 1.2）
+  }
+});
+```
+
+### 3. 罫線 (`borders`)
 
 シート全体の罫線プリセットを `borders` プロパティで指定できます。
 
@@ -91,9 +106,35 @@ const sheet = defineSheet<User>({
 
 個別のセルに罫線を設定したい場合は、`style` プロパティ内の `border` で詳細に指定可能です。
 
-### 3. スタイル (`style`)
+### 4. スタイル (`style`)
 
-フォント、背景色、配置などを詳細に設定できます。6桁のHexカラーコード (`#RRGGBB`) が使用可能です。
+フォント、背景色、配置などを詳細に設定できます。
+
+| プロパティ | 説明 | 型・値の例 |
+| :--- | :--- | :--- |
+| **`font`** | | |
+| `font.name` | フォント名 | `'Arial'`, `'ＭＳ Ｐゴシック'` |
+| `font.size` | フォントサイズ | `11`, `12` |
+| `font.bold` | 太字 | `true`, `false` |
+| `font.italic` | 斜体 | `true`, `false` |
+| `font.underline` | 下線 | `true`, `'single'`, `'double'` |
+| `font.strike` | 取り消し線 | `true`, `false` |
+| `font.color` | 文字色 | `'#FF0000'` (Hex), `{ argb: 'FFFF0000' }` |
+| **`fill`** | | |
+| `fill.color` | 背景色 (Solid) | `'#FFFF00'` (Hex) ※xlkit独自ショートカット |
+| `fill.type` | 塗りつぶしタイプ | `'pattern'` |
+| `fill.pattern` | パターン種類 | `'solid'`, `'darkGray'`, `'mediumGray'` |
+| **`alignment`** | | |
+| `alignment.horizontal` | 水平方向の配置 | `'left'`, `'center'`, `'right'`, `'justify'` |
+| `alignment.vertical` | 垂直方向の配置 | `'top'`, `'middle'`, `'bottom'` |
+| `alignment.wrapText` | 折り返し表示 | `true`, `false` |
+| `alignment.indent` | インデント | `1`, `2` |
+| `alignment.textRotation` | 文字の回転 | `45`, `90`, `'vertical'` |
+| **`border`** | | |
+| `border.top` | 上の罫線 | `{ style: 'thin', color: { argb: 'FF000000' } }` |
+| `border.left` | 左の罫線 | (同上) |
+| `border.bottom` | 下の罫線 | (同上) |
+| `border.right` | 右の罫線 | (同上) |
 
 ```typescript
 style: {
@@ -112,13 +153,21 @@ style: {
     wrapText: true
   },
   border: {
-    top: { style: 'thin', color: { argb: 'FF000000' } },
-    // ...
+    top: { style: 'thin', color: { argb: 'FF000000' } }
   }
 }
 ```
 
-### 4. ヘッダー設定 (`header`)
+#### スタイルの優先順位
+
+スタイルは以下の順序で適用（上書き）されます（下が優先）：
+
+1. **行定義 (`rows.style`)**: シート定義で指定した行全体のスタイル
+2. **データ行スタイル (`row.style`)**: データオブジェクトに含まれる `style` プロパティ
+3. **列定義 (`columns.style`)**: 列ごとのスタイル
+4. **条件付き列スタイル**: `columns.style` が関数の場合
+
+### 5. ヘッダー設定 (`header`)
 
 ヘッダー行のスタイルや構成をカスタマイズできます。
 
@@ -133,20 +182,29 @@ header: {
 }
 ```
 
-### 5. 行スタイル (`rows`)
+### 6. 行スタイル (`rows`)
+ 
+ 行ごとのスタイル（縞模様など）を定義できます。
+ 
+ ```typescript
+ rows: {
+   style: (data, index) => {
+     // 偶数行に背景色をつける
+     return index % 2 === 0 ? { fill: { color: '#F0F0F0' } } : {};
+   }
+ }
+ ```
 
-行ごとのスタイル（縞模様など）を定義できます。
+ また、データ行に `style` プロパティを含めることで、特定の行にスタイルを適用することも可能です。
 
-```typescript
-rows: {
-  style: (data, index) => {
-    // 偶数行に背景色をつける
-    return index % 2 === 0 ? { fill: { color: '#F0F0F0' } } : {};
-  }
-}
-```
+ ```typescript
+ const data = [
+   { name: 'Tom', age: 28 },
+   { name: 'Mary', age: 25, style: { fill: { color: '#FFFF00' } } }, // Maryの行は黄色背景
+ ];
+ ```
 
-### 6. ブラウザ環境でのダウンロード
+### 7. ブラウザ環境でのダウンロード
 
 ブラウザ環境では、`download()` メソッドを使って簡単にExcelファイルをダウンロードできます。
 
@@ -160,7 +218,7 @@ await createWorkbook().addSheet(sheet, data).download('output.xlsx');
 
 内部的には`saveToBuffer()`を呼び出してBlobを作成し、自動的にダウンロードを開始します。
 
-### 7. タイムアウト設定
+### 8. タイムアウト設定
 
 大量データ処理時のフリーズを防ぐため、`save()`、`saveToBuffer()`、`download()` にはデフォルトで10秒のタイムアウトが設定されています。
 
@@ -176,6 +234,44 @@ await createWorkbook().addSheet(sheet, data).download('output.xlsx', { timeout: 
 ```
 
 > **推奨**: 10万行以下のデータであればデフォルト設定で問題ありません。それ以上の大量データを扱う場合は、ファイル分割やストリーミング処理を検討してください。
+
+### 9. 制約事項
+
+- **予約語**: 列の `key` に `'style'` は使用できません。これは行ごとのスタイル定義プロパティとして予約されています。
+- **シート名**: Excelの仕様により、シート名は31文字以内で、`\ / ? * [ ] :` の文字は使用できません。
+
+## 高度な使い方
+
+### 複数シートの作成
+
+メソッドチェーンを使用して、1つのワークブックに複数のシートを追加できます。
+
+```typescript
+await createWorkbook()
+  .addSheet(usersSheet, usersData)
+  .addSheet(productsSheet, productsData)
+  .save('data.xlsx');
+```
+
+### TypeScriptによる型安全性
+
+ジェネリクスを使用することで、列定義のキーを型安全に保つことができます。
+
+```typescript
+interface User {
+  id: number;
+  name: string;
+}
+
+// keyは 'id' | 'name' に型推論され、誤字を防げます
+const sheet = defineSheet<User>({
+  name: 'Users',
+  columns: [
+    { key: 'id', ... },   // OK
+    { key: 'nmae', ... }  // Error: Type '"nmae"' is not assignable to type 'keyof User'
+  ]
+});
+```
 
 ## ライセンス
 

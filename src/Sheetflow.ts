@@ -25,9 +25,14 @@ export class XLKit {
 
     const sheet = this.workbook.addWorksheet(def.name);
 
-    // 1. Setup Columns & Headers
+    // 1. Setup Columns
     const columns = def.columns.map((col, colIndex) => {
       let width = col.width;
+
+      // Validate Column Key
+      if (col.key === 'style') {
+        throw new Error("Column key 'style' is reserved for row styling and cannot be used as a column key.");
+      }
 
       if (width === 'auto') {
         let maxLen = col.header.length * (def.autoWidth?.headerIncluded !== false ? 1 : 0);
@@ -58,29 +63,98 @@ export class XLKit {
     });
     sheet.columns = columns;
 
-    // 2. Add Data & Apply Row Styles
-    data.forEach((row, rowIndex) => {
-      const addedRow = sheet.addRow(row);
+    // 2. Setup Headers (Multi-line support)
+    let headerRowCount = 1;
+    if (def.header?.rows) {
+      headerRowCount = def.header.rows.length;
+      // Clear default header row if we are using custom rows
+      sheet.spliceRows(1, 1); 
+
+      def.header.rows.forEach((row, rowIndex) => {
+        const currentSheetRowIndex = rowIndex + 1;
+        const sheetRow = sheet.getRow(currentSheetRowIndex);
+        
+        let colIndex = 1;
+        row.forEach((cellConfig) => {
+           // Find next available cell (skip merged cells)
+           while (sheet.getCell(currentSheetRowIndex, colIndex).isMerged) {
+             colIndex++;
+           }
+
+           const cell = sheet.getCell(currentSheetRowIndex, colIndex);
+           
+           if (typeof cellConfig === 'string') {
+             cell.value = cellConfig;
+             colIndex++;
+           } else {
+             cell.value = cellConfig.value;
+             
+             if (cellConfig.style) {
+                cell.style = { ...cell.style, ...mapStyle(cellConfig.style) };
+             }
+
+             const rowSpan = cellConfig.rowSpan || 1;
+             const colSpan = cellConfig.colSpan || 1;
+
+             if (rowSpan > 1 || colSpan > 1) {
+               sheet.mergeCells(
+                 currentSheetRowIndex, 
+                 colIndex, 
+                 currentSheetRowIndex + rowSpan - 1, 
+                 colIndex + colSpan - 1
+               );
+             }
+             colIndex += colSpan;
+           }
+        });
+      });
+    }
+
+    // 3. Add Data & Apply Row Styles
+    const dataStartRow = headerRowCount + 1;
+    
+    data.forEach((row, index) => {
+      const rowIndex = dataStartRow + index;
+      // We can't use addRow easily because it appends to the end, but we might have gaps if we messed with rows?
+      // Actually addRow is fine as long as we are consistent.
+      // But since we might have complex headers, let's be explicit with getRow to be safe or just use addRow if we know we are at the end.
+      // For safety with existing header logic, let's use explicit row rendering for data to ensure alignment.
       
-      // Apply row-level style
+      const sheetRow = sheet.getRow(rowIndex);
+      
+      def.columns.forEach((col, colIndex) => {
+          const cell = sheetRow.getCell(colIndex + 1);
+          cell.value = row[col.key] as any;
+      });
+      
+      // Apply row-level style from definition
       if (def.rows?.style) {
-        const rowStyle = def.rows.style(row, rowIndex);
+        const rowStyle = def.rows.style(row, index);
         const mappedStyle = mapStyle(rowStyle);
-        addedRow.eachCell((cell) => {
+        sheetRow.eachCell((cell) => {
           cell.style = { ...cell.style, ...mappedStyle };
         });
+      }
+
+      // Apply row-level style from data (if 'style' property exists)
+      if ((row as any).style) {
+         const dataRowStyle = (row as any).style;
+         const mappedStyle = mapStyle(dataRowStyle);
+         sheetRow.eachCell((cell) => {
+            cell.style = { ...cell.style, ...mappedStyle };
+         });
       }
 
       // Apply column-level conditional styles
       def.columns.forEach((col, colIndex) => {
         if (typeof col.style === 'function') {
-          const cell = addedRow.getCell(colIndex + 1);
-          const cellStyle = col.style(row[col.key], row, rowIndex);
+          const cell = sheetRow.getCell(colIndex + 1);
+          const cellStyle = col.style(row[col.key], row, index);
           cell.style = { ...cell.style, ...mapStyle(cellStyle) };
         }
         
         if (col.format) {
-             const cell = addedRow.getCell(colIndex + 1);
+             const cell = sheetRow.getCell(colIndex + 1);
              if (typeof col.format === 'string') {
                  cell.numFmt = col.format;
              } else {
@@ -88,26 +162,35 @@ export class XLKit {
              }
         }
       });
+      
+      sheetRow.commit();
     });
 
-    // 3. Apply Header Styles
+    // 4. Apply Header Styles (Global)
     if (def.header?.style) {
-      const headerRow = sheet.getRow(1);
       const mappedHeaderStyle = mapStyle(def.header.style);
-      headerRow.eachCell((cell) => {
-        cell.style = { ...cell.style, ...mappedHeaderStyle };
-      });
+      // Apply to all header rows
+      for (let i = 1; i <= headerRowCount; i++) {
+        const row = sheet.getRow(i);
+        row.eachCell((cell) => {
+           // Merge with existing style (cell specific style takes precedence if we did it right, but here we are applying global header style)
+           // Usually global header style is base, cell specific is override. 
+           // But here we apply global AFTER. Let's apply it only if no style? 
+           // Or just merge.
+           cell.style = { ...mappedHeaderStyle, ...cell.style };
+        });
+      }
     }
     
-    // 4. Apply Vertical Merges
+    // 5. Apply Vertical Merges
     def.columns.forEach((col, colIndex) => {
       if (col.merge === 'vertical') {
-        let startRow = 2; // 1-based, skip header (row 1)
+        let startRow = dataStartRow; 
         let previousValue: any = null;
 
         // Iterate from first data row to last
         for (let i = 0; i < data.length; i++) {
-          const currentRowIndex = i + 2;
+          const currentRowIndex = dataStartRow + i;
           const cell = sheet.getCell(currentRowIndex, colIndex + 1);
           const currentValue = cell.value;
 
@@ -127,14 +210,74 @@ export class XLKit {
         }
         
         // Handle the last group
-        const lastRowIndex = data.length + 1;
-        if (lastRowIndex > startRow) {
-             sheet.mergeCells(startRow, colIndex + 1, lastRowIndex, colIndex + 1);
+        const lastRowIndex = dataStartRow + data.length; // This is actually the row AFTER the last data row index if we use <
+        // Wait, loop goes 0 to length-1.
+        // If i=length-1 (last item), we check logic.
+        // We need to handle the merge AFTER the loop for the final group.
+        if (data.length > 0) {
+             const finalRowIndex = dataStartRow + data.length - 1;
+             if (finalRowIndex > startRow) {
+                 sheet.mergeCells(startRow, colIndex + 1, finalRowIndex, colIndex + 1);
+             }
         }
       }
     });
 
-    // 5. Apply Borders
+    // 6. Apply Horizontal Merges
+    // We iterate row by row
+    for (let i = 0; i < data.length; i++) {
+        const currentRowIndex = dataStartRow + i;
+        const row = sheet.getRow(currentRowIndex);
+        
+        let startCol = 1;
+        let previousValue: any = null;
+        let merging = false;
+
+        // We need to check which columns are candidates for horizontal merge.
+        // A simple approach: iterate columns. If current col has merge='horizontal', try to merge with next.
+        // But we need to group them.
+        
+        for (let c = 0; c < def.columns.length; c++) {
+            const colDef = def.columns[c];
+            const currentCell = row.getCell(c + 1);
+            const currentValue = currentCell.value;
+
+            if (colDef.merge === 'horizontal') {
+                if (!merging) {
+                    merging = true;
+                    startCol = c + 1;
+                    previousValue = currentValue;
+                } else {
+                    if (currentValue !== previousValue) {
+                        // End of a merge group
+                        if ((c + 1) - 1 > startCol) {
+                            sheet.mergeCells(currentRowIndex, startCol, currentRowIndex, c);
+                        }
+                        // Start new group
+                        startCol = c + 1;
+                        previousValue = currentValue;
+                    }
+                }
+            } else {
+                if (merging) {
+                    // End of merge group because this column is not mergeable
+                    if ((c + 1) - 1 > startCol) {
+                        sheet.mergeCells(currentRowIndex, startCol, currentRowIndex, c);
+                    }
+                    merging = false;
+                }
+            }
+        }
+        // Check at end of row
+        if (merging) {
+             const lastCol = def.columns.length;
+             if (lastCol > startCol) {
+                 sheet.mergeCells(currentRowIndex, startCol, currentRowIndex, lastCol);
+             }
+        }
+    }
+
+    // 7. Apply Borders
     if (def.borders === 'all') {
         sheet.eachRow((row) => {
             row.eachCell((cell) => {
@@ -166,8 +309,9 @@ export class XLKit {
         }
     } else if (def.borders === 'header-body') {
          const lastCol = sheet.columnCount;
+         // Apply to the last row of the header
          for (let c = 1; c <= lastCol; c++) {
-             const headerCell = sheet.getCell(1, c);
+             const headerCell = sheet.getCell(headerRowCount, c);
              headerCell.border = { ...headerCell.border, bottom: { style: 'medium' } };
          }
     }
