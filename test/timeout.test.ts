@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createWorkbook, defineSheet } from '../src';
+import { createWorkbook } from '../src';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -14,16 +14,15 @@ describe('Timeout Functionality', () => {
     
     // Create enough data to take some time
     const data = Array.from({ length: 1000 }, (_, i) => ({ id: i, name: `Item ${i}` }));
-    
-    const sheetDef = defineSheet<{ id: number; name: string }>({
-      name: 'Timeout',
-      columns: [
-          { key: 'id', header: 'ID' },
-          { key: 'name', header: 'Name' }
-      ]
-    });
 
-    const sf = createWorkbook().addSheet(sheetDef, data);
+    const sf = createWorkbook().addSheet({
+      name: 'Timeout',
+      headers: [
+        { key: 'id', label: 'ID' },
+        { key: 'name', label: 'Name' }
+      ],
+      rows: data
+    });
 
     // Set timeout to 1ms to ensure it fails
     await expect(sf.save(filePath, { timeout: 1 })).rejects.toThrow(/Operation timed out/);
@@ -31,13 +30,12 @@ describe('Timeout Functionality', () => {
 
   it('should respect custom timeout', async () => {
     const filePath = path.join(OUTPUT_DIR, 'custom_timeout.xlsx');
-    const data = [{ id: 1, name: 'Test' }];
-    const sheetDef = defineSheet<{ id: number; name: string }>({
-        name: 'Timeout',
-        columns: [{ key: 'id', header: 'ID' }, { key: 'name', header: 'Name' }]
-    });
 
     // Should pass with sufficient timeout
-    await expect(createWorkbook().addSheet(sheetDef, data).save(filePath, { timeout: 5000 })).resolves.not.toThrow();
+    await expect(createWorkbook().addSheet({
+      name: 'Timeout',
+      headers: [{ key: 'id', label: 'ID' }, { key: 'name', label: 'Name' }],
+      rows: [{ id: 1, name: 'Test' }]
+    }).save(filePath, { timeout: 5000 })).resolves.not.toThrow();
   });
 });

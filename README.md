@@ -11,8 +11,8 @@
 
 ## 特徴
 
-- 📝 **宣言的スキーマ**: 列、ヘッダー、スタイルを一箇所で定義。
-- 🎨 **高度なスタイル設定**: ヘッダー、行、列、または特定のセルに対して、条件付きでスタイルを適用可能。
+- 📝 **宣言的スキーマ**: データとスキーマを一箇所で定義。
+- 🎨 **柔軟なスタイル設定**: タイトル、ヘッダー、行、列、セルの7段階でスタイルを適用可能。
 - 🔗 **自動結合**: 同じ値を持つ縦方向のセルを自動的に結合 (`merge: 'vertical'`)。
 - 📏 **自動列幅**: コンテンツ（全角文字を含む）に基づいて列幅をスマートに計算。
 - 🌈 **Hexカラー**: 標準的な6桁のHexコード（`#FF0000`）を直接使用可能。
@@ -27,155 +27,244 @@ npm install xlkit
 ## クイックスタート
 
 ```typescript
-import { createWorkbook, defineSheet } from 'xlkit';
+import { createWorkbook } from 'xlkit';
 
-// 1. データ型を定義
-interface User {
-  id: number;
-  name: string;
-  role: string;
-  isActive: boolean;
-}
-
-// 2. シートのスキーマを定義
-const userSheet = defineSheet<User>({
+await createWorkbook().addSheet({
   name: 'Users',
-  columns: [
-    { key: 'id', header: 'ID', width: 10 },
-    { key: 'name', header: '氏名', width: 20 },
-    { key: 'role', header: '役割', width: 'auto', merge: 'vertical' },
+  headers: [
+    { key: 'id', label: 'ID', width: 10 },
+    { key: 'name', label: '氏名', width: 20 },
+    { 
+      key: 'role', 
+      label: '役割', 
+      width: 'auto', 
+      merge: 'vertical' 
+    },
     { 
       key: 'isActive', 
-      header: 'ステータス', 
+      label: 'ステータス', 
       format: (val) => val ? '有効' : '無効',
       style: (val) => ({ font: { color: val ? '#00AA00' : '#FF0000' } })
     }
   ],
+  rows: [
+    { id: 1, name: 'Alice', role: 'Admin', isActive: true },
+    { id: 2, name: 'Bob', role: 'User', isActive: true },
+    { id: 3, name: 'Charlie', role: 'User', isActive: false }
+  ],
   borders: 'outer'
-});
-
-// 3. Excel生成
-await createWorkbook().addSheet(userSheet, users).save('users.xlsx');
+}).save('users.xlsx');
 ```
 
 ## 詳細リファレンス
 
-### 1. レイアウトと列定義 (`columns`)
-
-列の定義は `columns` 配列で行います。
-
-| プロパティ | 型 | 説明 |
-| :--- | :--- | :--- |
-| `key` | `keyof T` | データのプロパティキー |
-| `header` | `string` | ヘッダーに表示するテキスト |
-| `width` | `number` \| `'auto'` | 列幅。`'auto'` を指定するとコンテンツに合わせて自動調整されます。 |
-| `merge` | `'vertical'` | `'vertical'` を指定すると、上下のセルが同じ値の場合に自動結合されます。 |
-| `format` | `string` \| `Function` | 数値/日付のフォーマット文字列（例: `'$#,##0'`, `'yyyy-mm-dd'`）または変換関数。 |
-| `style` | `Style` \| `Function` | 列全体のスタイル、または値に応じた条件付きスタイル関数。 |
-
-### 2. 罫線 (`borders`)
-
-シート全体の罫線プリセットを `borders` プロパティで指定できます。
-
-- **`'all'`**: すべてのセルに格子状の罫線を引きます。
-- **`'outer'`**: データ領域の外枠のみに罫線を引きます。
-- **`'header-body'`**: ヘッダー行の下に太めの線を引きます。
-- **`'none'`**: 罫線を引きません（デフォルト）。
+### 1. 基本構造
 
 ```typescript
-const sheet = defineSheet<User>({
-  // ...
-  borders: 'all', // 格子状
-});
+createWorkbook().addSheet({
+  name: string,              // シート名（必須）
+  headers: HeaderDef[],      // 列定義（必須）
+  rows: any[],               // データ行（必須）
+  title?: TitleConfig,       // タイトル行（オプション）
+  styles?: StylesConfig,     // 全体スタイル設定（オプション）
+  borders?: 'all' | 'outer' | 'header-body' | 'none',
+  autoWidth?: boolean | { ... }
+})
 ```
 
-個別のセルに罫線を設定したい場合は、`style` プロパティ内の `border` で詳細に指定可能です。
+### 2. ヘッダー定義 (`headers`)
 
-### 3. スタイル (`style`)
-
-フォント、背景色、配置などを詳細に設定できます。6桁のHexカラーコード (`#RRGGBB`) が使用可能です。
+列の定義は `headers` 配列で行います。
 
 ```typescript
-style: {
-  font: { 
-    name: 'Arial',
-    size: 12,
-    bold: true,
-    color: '#FF0000' // 赤色
+headers: [
+  { 
+    key: 'age',                    // データのプロパティキー
+    label: '年齢',                 // ヘッダーテキスト
+    width: 10,                     // 列幅（数値または'auto'）
+    merge: 'vertical',             // 縦方向の自動結合
+    format: '$#,##0',              // 数値/日付フォーマット
+    style: { ... }                 // 列全体のスタイル（固定）
   },
-  fill: {
-    color: '#EEEEEE' // Hexカラーで簡単に指定
-  },
-  alignment: {
-    vertical: 'middle',
-    horizontal: 'center',
-    wrapText: true
-  },
-  border: {
-    top: { style: 'thin', color: { argb: 'FF000000' } },
-    // ...
+  {
+    key: 'salary',
+    label: '給与',
+    style: (val, row, index) => { // 条件付きスタイル（関数）
+      return val > 100000 ? { font: { color: '#FF0000' } } : {};
+    }
+  }
+]
+```
+
+**ヘッダーセルのスタイル指定:**
+```typescript
+headers: [
+  { 
+    key: 'age', 
+    label: { value: '年齢', style: { font: { bold: true } } }  // ヘッダーセルにスタイル
+  }
+]
+```
+
+### 3. データ行 (`rows`)
+
+データとセルレベルのスタイルを定義します。
+
+```typescript
+rows: [
+  { age: 18, name: "Mary" },  // シンプルな値
+  { 
+    age: 25, 
+    name: { value: "Tom", style: { font: { bold: true } } }  // セルにスタイル
+  }
+]
+```
+
+### 4. タイトル行 (`title`)
+
+シートの最上部にタイトル行を追加できます。
+
+```typescript
+title: {
+  label: '従業員リスト 2025',  // または配列: ['タイトル1', 'タイトル2']
+  style: { 
+    fill: { color: '#4472C4' }, 
+    font: { color: '#FFFFFF', bold: true, size: 14 },
+    alignment: { horizontal: 'center' }
   }
 }
 ```
 
-### 4. ヘッダー設定 (`header`)
+### 5. 全体スタイル設定 (`styles`)
 
-ヘッダー行のスタイルや構成をカスタマイズできます。
+7段階の優先順位でスタイルを適用できます。
 
 ```typescript
-header: {
-  rows: ['社員名簿 2025'], // 1行目（タイトルなど）
-  style: { // ヘッダー行のスタイル
-    font: { bold: true, color: '#FFFFFF' },
-    fill: { color: '#4472C4' }
+styles: {
+  all: { font: { name: 'Arial', size: 11 } },  // 全体のデフォルト
+  header: { fill: { color: '#EEEEEE' }, font: { bold: true } },  // ヘッダー行全体
+  body: { alignment: { vertical: 'middle' } },  // ボディ全体
+  row: (data, index) => {  // 行全体（動的）
+    return index % 2 === 1 ? { fill: { color: '#F2F2F2' } } : {};
   },
-  borders: 'header-body' // ヘッダー下の罫線
-}
-```
-
-### 5. 行スタイル (`rows`)
-
-行ごとのスタイル（縞模様など）を定義できます。
-
-```typescript
-rows: {
-  style: (data, index) => {
-    // 偶数行に背景色をつける
-    return index % 2 === 0 ? { fill: { color: '#F0F0F0' } } : {};
+  column: {  // 列全体
+    age: { alignment: { horizontal: 'center' } },
+    name: { font: { bold: true } }
   }
 }
 ```
 
-### 6. ブラウザ環境でのダウンロード
+**スタイル適用の優先順位（ヘッダー行）:**
+1. `styles.all` → 2. `styles.header` → 3. `headers[].label.style`
 
-ブラウザ環境では、`download()` メソッドを使って簡単にExcelファイルをダウンロードできます。
+**スタイル適用の優先順位（データ行）:**
+1. `styles.all` → 2. `styles.body` → 3. `styles.column[key]` → 4. `styles.row()` → 5. `headers[].style` → 6. `rows[].{key}.style`
+
+### 6. 罫線 (`borders`)
+
+シート全体の罫線プリセットを指定できます。
+
+- **`'all'`**: すべてのセルに格子状の罫線
+- **`'outer'`**: データ領域の外枠のみ
+- **`'header-body'`**: ヘッダー行の下に太めの線
+- **`'none'`**: 罫線なし（デフォルト）
+
+```typescript
+{
+  borders: 'all'
+}
+```
+
+### 7. 列幅自動調整 (`autoWidth`)
+
+```typescript
+// 方法1: 全列を自動調整
+{ autoWidth: true }
+
+// 方法2: 詳細設定
+{ 
+  autoWidth: {
+    enabled: true,
+    padding: 2,
+    headerIncluded: true,
+    charWidthConstant: 1.2
+  }
+}
+
+// 方法3: 個別指定が優先
+{
+  headers: [
+    { key: 'age', label: '年齢', width: 10 },  // 固定幅
+    { key: 'name', label: '名前' }  // 自動調整
+  ],
+  autoWidth: true
+}
+```
+
+### 8. ブラウザ環境でのダウンロード
 
 ```typescript
 // Node.js環境
-await createWorkbook().addSheet(sheet, data).save('output.xlsx');
+await createWorkbook().addSheet({ ... }).save('output.xlsx');
 
 // ブラウザ環境
-await createWorkbook().addSheet(sheet, data).download('output.xlsx');
+await createWorkbook().addSheet({ ... }).download('output.xlsx');
 ```
 
-内部的には`saveToBuffer()`を呼び出してBlobを作成し、自動的にダウンロードを開始します。
+### 9. タイムアウト設定
 
-### 7. タイムアウト設定
-
-大量データ処理時のフリーズを防ぐため、`save()`、`saveToBuffer()`、`download()` にはデフォルトで10秒のタイムアウトが設定されています。
+大量データ処理時のフリーズを防ぐため、デフォルトで10秒のタイムアウトが設定されています。
 
 ```typescript
 // デフォルト（10秒）
-await createWorkbook().addSheet(sheet, data).save('output.xlsx');
+await createWorkbook().addSheet({ ... }).save('output.xlsx');
 
 // カスタムタイムアウト（30秒）
-await createWorkbook().addSheet(sheet, data).save('output.xlsx', { timeout: 30000 });
-
-// ブラウザ環境でも同様
-await createWorkbook().addSheet(sheet, data).download('output.xlsx', { timeout: 15000 });
+await createWorkbook().addSheet({ ... }).save('output.xlsx', { timeout: 30000 });
 ```
 
-> **推奨**: 10万行以下のデータであればデフォルト設定で問題ありません。それ以上の大量データを扱う場合は、ファイル分割やストリーミング処理を検討してください。
+> **推奨**: 10万行以下のデータであればデフォルト設定で問題ありません。
+
+## 完全な例
+
+```typescript
+await createWorkbook().addSheet({
+  name: 'Employees',
+  title: {
+    label: '従業員リスト 2025',
+    style: { 
+      fill: { color: '#4472C4' }, 
+      font: { color: '#FFFFFF', bold: true, size: 14 },
+      alignment: { horizontal: 'center' }
+    }
+  },
+  headers: [
+    { 
+      key: 'dept', 
+      label: '部署', 
+      merge: 'vertical',
+      style: { alignment: { vertical: 'middle', horizontal: 'center' } }
+    },
+    { key: 'name', label: '名前', width: 20 },
+    { 
+      key: 'salary', 
+      label: '給与',
+      format: '$#,##0',
+      style: (val) => val > 100000 ? { font: { color: '#FF0000', bold: true } } : {}
+    }
+  ],
+  rows: [
+    { dept: 'Engineering', name: 'Alice', salary: 120000 },
+    { dept: 'Engineering', name: 'Bob', salary: 80000 },
+    { dept: 'Sales', name: { value: 'Charlie', style: { font: { bold: true } } }, salary: 95000 }
+  ],
+  styles: {
+    row: (_, index) => index % 2 === 1 ? { fill: { color: '#F2F2F2' } } : {}
+  },
+  borders: 'all',
+  autoWidth: true
+}).save('employees.xlsx');
+```
 
 ## ライセンス
 

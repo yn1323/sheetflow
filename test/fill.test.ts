@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createWorkbook, defineSheet } from '../src';
+import { createWorkbook } from '../src';
 import { readExcel, getCellStyle } from './utils';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -13,52 +13,47 @@ describe('Fill Styling', () => {
   it('should apply fill styles to headers and rows', async () => {
     const filePath = path.join(OUTPUT_DIR, 'fill.xlsx');
 
-    interface Data {
-      id: number;
-    }
-
-    const data: Data[] = [
-      { id: 1 },
-      { id: 2 },
-      { id: 3 },
-    ];
-
-    const sheetDef = defineSheet<Data>({
+    await createWorkbook().addSheet({
       name: 'FillTest',
-      columns: [{ key: 'id', header: 'ID' }],
-      header: {
-          rows: ['ID List'],
-          style: { fill: { color: '#CCCCCC' } }
+      title: {
+        label: 'ID List',
+        style: { fill: { color: '#CCCCCC' } }
       },
-      rows: {
-          style: (_, index) => index % 2 === 1 ? { fill: { color: '#EFEFEF' } } : {}
+      headers: [
+        { key: 'id', label: 'ID' }
+      ],
+      rows: [
+        { id: 1 },
+        { id: 2, styles: { fill: { color: '#EFEFEF' } } },
+        { id: 3 },
+      ],
+      styles: {
+        row: (_, index) => index % 2 === 1 ? { fill: { color: '#EFEFEF' } } : {}
       }
-    });
-
-    await createWorkbook().addSheet(sheetDef, data).save(filePath);
+    }).save(filePath);
 
     const workbook = await readExcel(filePath);
     const sheet = workbook.getWorksheet('FillTest');
     
     expect(sheet).toBeDefined();
     if(sheet) {
-        // Header Fill
-        const headerStyle = getCellStyle(sheet, 1, 1);
-        expect(headerStyle.fill).toMatchObject({
+        // Title Fill
+        const titleStyle = getCellStyle(sheet, 1, 1);
+        expect(titleStyle.fill).toMatchObject({
             type: 'pattern',
             pattern: 'solid',
             fgColor: { argb: 'FFCCCCCC' }
         });
 
-        // Row Fill (Odd index in data -> Even row in Excel because of header)
-        // data[0] (id:1) -> index 0 -> no fill -> Excel Row 2
-        // data[1] (id:2) -> index 1 -> fill -> Excel Row 3
+        // Row Fill (index 1 in data -> Excel Row 3 because of title + header)
+        // data[0] (id:1) -> index 0 -> no fill -> Excel Row 3
+        // data[1] (id:2) -> index 1 -> fill -> Excel Row 4
         
-        const row2Style = getCellStyle(sheet, 2, 1);
-        expect(row2Style.fill).toBeUndefined();
-
         const row3Style = getCellStyle(sheet, 3, 1);
-        expect(row3Style.fill).toMatchObject({
+        expect(row3Style.fill).toBeUndefined();
+
+        const row4Style = getCellStyle(sheet, 4, 1);
+        expect(row4Style.fill).toMatchObject({
              type: 'pattern',
              pattern: 'solid',
              fgColor: { argb: 'FFEFEFEF' }

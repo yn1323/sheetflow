@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createWorkbook, defineSheet } from '../src';
+import { createWorkbook } from '../src';
 import { readExcel, getCellStyle } from './utils';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -13,54 +13,46 @@ describe('Font Styling', () => {
   it('should apply font styles to columns and conditionally', async () => {
     const filePath = path.join(OUTPUT_DIR, 'font.xlsx');
 
-    interface User {
-      name: string;
-      status: string;
-    }
-
-    const users: User[] = [
-      { name: 'Alice', status: 'active' },
-      { name: 'Bob', status: 'inactive' },
-    ];
-
-    const sheetDef = defineSheet<User>({
+    await createWorkbook().addSheet({
       name: 'FontTest',
-      columns: [
+      headers: [
         { 
-            key: 'name', 
-            header: 'Name', 
-            style: { font: { bold: true, size: 14 } } 
+          key: 'name', 
+          label: 'Name', 
+          style: { font: { bold: true, size: 14 } } 
         },
         { 
-            key: 'status', 
-            header: 'Status', 
-            style: (val) => ({ 
-                font: { color: val === 'active' ? '#00FF00' : '#FF0000', italic: true } 
-            })
+          key: 'status', 
+          label: 'Status', 
+          style: (val) => ({ 
+            font: { color: val === 'active' ? '#00FF00' : '#FF0000', italic: true } 
+          })
         }
+      ],
+      rows: [
+        { name: 'Alice', status: 'active' },
+        { name: 'Bob', status: 'inactive' },
       ]
-    });
-
-    await createWorkbook().addSheet(sheetDef, users).save(filePath);
+    }).save(filePath);
 
     const workbook = await readExcel(filePath);
     const sheet = workbook.getWorksheet('FontTest');
     
     expect(sheet).toBeDefined();
     if(sheet) {
-        // Column Style
-        const nameStyle = getCellStyle(sheet, 2, 1);
-        expect(nameStyle.font).toMatchObject({ bold: true, size: 14 });
+      // Column Style
+      const nameStyle = getCellStyle(sheet, 2, 1);
+      expect(nameStyle.font).toMatchObject({ bold: true, size: 14 });
 
-        // Conditional Style (Active)
-        const activeStyle = getCellStyle(sheet, 2, 2);
-        expect(activeStyle.font?.color).toMatchObject({ argb: 'FF00FF00' });
-        expect(activeStyle.font?.italic).toBe(true);
+      // Conditional Style (Active)
+      const activeStyle = getCellStyle(sheet, 2, 2);
+      expect(activeStyle.font?.color).toMatchObject({ argb: 'FF00FF00' });
+      expect(activeStyle.font?.italic).toBe(true);
 
-        // Conditional Style (Inactive)
-        const inactiveStyle = getCellStyle(sheet, 3, 2);
-        expect(inactiveStyle.font?.color).toMatchObject({ argb: 'FFFF0000' });
-        expect(inactiveStyle.font?.italic).toBe(true);
+      // Conditional Style (Inactive)
+      const inactiveStyle = getCellStyle(sheet, 3, 2);
+      expect(inactiveStyle.font?.color).toMatchObject({ argb: 'FFFF0000' });
+      expect(inactiveStyle.font?.italic).toBe(true);
     }
   });
 });
